@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Snip — URL Shortener</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0f; --surface: #13131a; --border: #1e1e2e;
+      --accent: #7fff6e; --accent2: #3effc8; --danger: #ff5f6e;
+      --text: #e8e8f0; --muted: #6b6b80;
+      --font-head: 'Syne', sans-serif;
+      --font-mono: 'DM Mono', monospace;
+      --font-body: 'DM Sans', sans-serif;
+      --radius: 12px;
+    }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: var(--font-body); min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 60px 20px 100px;
+      background-image: radial-gradient(ellipse 60% 40% at 50% -10%, rgba(127,255,110,0.07) 0%, transparent 70%);
+    }
+    header { text-align: center; margin-bottom: 52px; animation: fadeDown .6s ease both; }
+    .logo { font-family: var(--font-head); font-size: clamp(2.5rem, 6vw, 4rem); font-weight: 800; letter-spacing: -2px; color: var(--accent); line-height: 1; }
+    .logo span { color: var(--text); }
+    header p { margin-top: 10px; color: var(--muted); font-size: .95rem; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 32px; width: 100%; max-width: 640px; margin-bottom: 20px; animation: fadeUp .5s ease both; }
+    .card h2 { font-family: var(--font-head); font-size: 1rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 18px; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; }
+    input[type="text"], input[type="url"] { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: var(--font-mono); font-size: .9rem; padding: 12px 16px; outline: none; transition: border-color .2s; min-width: 0; }
+    input:focus { border-color: var(--accent); }
+    input::placeholder { color: var(--muted); }
+    button { background: var(--accent); color: #0a0a0f; border: none; border-radius: 8px; font-family: var(--font-head); font-weight: 700; font-size: .9rem; padding: 12px 22px; cursor: pointer; white-space: nowrap; transition: opacity .15s, transform .1s; }
+    button:hover { opacity: .85; }
+    button:active { transform: scale(.97); }
+    button.danger { background: var(--danger); }
+    button.outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    button.outline:hover { border-color: var(--accent2); color: var(--accent2); }
+    .result { margin-top: 18px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; font-family: var(--font-mono); font-size: .82rem; line-height: 1.7; white-space: pre-wrap; word-break: break-all; display: none; max-height: 260px; overflow-y: auto; }
+    .result.visible { display: block; animation: fadeUp .3s ease; }
+    .result.ok { border-color: var(--accent); color: var(--accent); }
+    .result.err { border-color: var(--danger); color: var(--danger); }
+    .result.info { border-color: var(--accent2); color: var(--accent2); }
+    #url-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .url-item { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; animation: fadeUp .3s ease; }
+    .url-item-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .url-code { font-family: var(--font-mono); font-weight: 500; color: var(--accent); font-size: .9rem; }
+    .url-long { font-size: .8rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 340px; }
+    .url-actions { display: flex; gap: 8px; flex-shrink: 0; }
+    .url-actions button { padding: 7px 14px; font-size: .8rem; }
+    .badge { font-family: var(--font-mono); font-size: .75rem; color: var(--muted); background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; }
+    @keyframes fadeDown { from { opacity: 0; transform: translateY(-18px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body>
+<header>
+  <div class="logo">snip<span>.</span></div>
+  <p>Paste long URLs. Get short ones. Simple.</p>
+</header>
+
+<div class="card">
+  <h2>✂ Shorten a URL</h2>
+  <div class="row">
+    <input type="url" id="create-url" placeholder="https://your-very-long-url.com/..." />
+    <button onclick="createURL()">Shorten</button>
+  </div>
+  <div class="result" id="create-result"></div>
+</div>
+
+<div class="card">
+  <h2>🔍 Lookup by Short Code</h2>
+  <div class="row">
+    <input type="text" id="lookup-code" placeholder="e.g. aB3xY2" />
+    <button class="outline" onclick="lookupURL()">Retrieve</button>
+    <button class="outline" onclick="getStats()">Stats</button>
+  </div>
+  <div class="result" id="lookup-result"></div>
+</div>
+
+<div class="card">
+  <h2>✏️ Update a Short URL</h2>
+  <div class="row">
+    <input type="text" id="update-code" placeholder="Short code" style="max-width:160px" />
+    <input type="url" id="update-url" placeholder="New destination URL" />
+    <button class="outline" onclick="updateURL()">Update</button>
+  </div>
+  <div class="result" id="update-result"></div>
+</div>
+
+<div class="card">
+  <h2>🗑 Delete a Short URL</h2>
+  <div class="row">
+    <input type="text" id="delete-code" placeholder="Short code to delete" />
+    <button class="danger" onclick="deleteURL()">Delete</button>
+  </div>
+  <div class="result" id="delete-result"></div>
+</div>
+
+<div class="card">
+  <h2>📋 All Short URLs</h2>
+  <ul id="url-list"><li style="color:var(--muted);font-size:.85rem">No URLs yet.</li></ul>
+</div>
+
+<script>
+  function show(id, text, type = 'ok') {
+    const el = document.getElementById(id);
+    el.textContent = typeof text === 'object' ? JSON.stringify(text, null, 2) : text;
+    el.className = `result visible ${type}`;
+  }
+  async function api(method, path, body) {
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(path, opts);
+    const text = await res.text();
+    let json = null;
+    try { json = JSON.parse(text); } catch {}
+    return { ok: res.ok, status: res.status, json };
+  }
+  const STORE_KEY = 'snip_codes';
+  function getStoredCodes() { try { return JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); } catch { return []; } }
+  function saveCode(code) { const codes = getStoredCodes(); if (!codes.includes(code)) { codes.unshift(code); localStorage.setItem(STORE_KEY, JSON.stringify(codes)); } }
+  function removeCode(code) { const codes = getStoredCodes().filter(c => c !== code); localStorage.setItem(STORE_KEY, JSON.stringify(codes)); }
+
+  async function createURL() {
+    const url = document.getElementById('create-url').value.trim();
+    if (!url) { show('create-result', 'Please enter a URL.', 'err'); return; }
+    const { ok, json } = await api('POST', '/shorten', { url });
+    if (ok) {
+      show('create-result', { ...json, shortLink: `${location.origin}/${json.shortCode}` }, 'ok');
+      document.getElementById('create-url').value = '';
+      saveCode(json.shortCode);
+      loadAll();
+    } else { show('create-result', json?.error || 'Something went wrong', 'err'); }
+  }
+  async function lookupURL() {
+    const code = document.getElementById('lookup-code').value.trim();
+    if (!code) { show('lookup-result', 'Enter a short code.', 'err'); return; }
+    const { ok, json } = await api('GET', `/shorten/${code}`);
+    if (ok) { show('lookup-result', { ...json, shortLink: `${location.origin}/${json.shortCode}` }, 'info'); }
+    else { show('lookup-result', json?.error || 'Not found', 'err'); }
+  }
+  async function getStats() {
+    const code = document.getElementById('lookup-code').value.trim();
+    if (!code) { show('lookup-result', 'Enter a short code.', 'err'); return; }
+    const { ok, json } = await api('GET', `/shorten/${code}/stats`);
+    if (ok) { show('lookup-result', json, 'info'); }
+    else { show('lookup-result', json?.error || 'Not found', 'err'); }
+  }
+  async function updateURL() {
+    const code = document.getElementById('update-code').value.trim();
+    const url = document.getElementById('update-url').value.trim();
+    if (!code || !url) { show('update-result', 'Both fields are required.', 'err'); return; }
+    const { ok, json } = await api('PUT', `/shorten/${code}`, { url });
+    if (ok) { show('update-result', json, 'ok'); loadAll(); }
+    else { show('update-result', json?.error || 'Something went wrong', 'err'); }
+  }
+  async function deleteURL() {
+    const code = document.getElementById('delete-code').value.trim();
+    if (!code) { show('delete-result', 'Enter a short code.', 'err'); return; }
+    if (!confirm(`Delete /${code}? This cannot be undone.`)) return;
+    const { status } = await api('DELETE', `/shorten/${code}`);
+    if (status === 204) { show('delete-result', `✓ /${code} deleted successfully.`, 'ok'); removeCode(code); loadAll(); }
+    else { show('delete-result', 'Not found or error.', 'err'); }
+  }
+  async function loadAll() {
+    const codes = getStoredCodes();
+    const list = document.getElementById('url-list');
+    if (codes.length === 0) { list.innerHTML = '<li style="color:var(--muted);font-size:.85rem">No URLs yet — shorten one above!</li>'; return; }
+    list.innerHTML = '';
+    for (const code of codes) {
+      const { ok, json } = await api('GET', `/shorten/${code}`);
+      if (!ok) { removeCode(code); continue; }
+      const li = document.createElement('li');
+      li.className = 'url-item';
+      li.innerHTML = `
+        <div class="url-item-info">
+          <span class="url-code">/${json.shortCode}</span>
+          <span class="url-long">${json.url}</span>
+        </div>
+        <div class="url-actions">
+          <span class="badge"><a href="/${json.shortCode}" target="_blank" style="color:inherit;text-decoration:none">↗ open</a></span>
+          <button class="outline" onclick="prefillStats('${json.shortCode}')">Stats</button>
+          <button class="danger" onclick="quickDelete('${json.shortCode}')">Del</button>
+        </div>`;
+      list.appendChild(li);
+    }
+  }
+  function prefillStats(code) { document.getElementById('lookup-code').value = code; getStats(); }
+  async function quickDelete(code) {
+    if (!confirm(`Delete /${code}?`)) return;
+    const { status } = await api('DELETE', `/shorten/${code}`);
+    if (status === 204) { removeCode(code); loadAll(); }
+  }
+  loadAll();
+</script>
+</body>
+</html>
