@@ -42,5 +42,7 @@ http://localhost:5000
 | DELETE | /shorten/<code> | Delete URL |
 | GET | /shorten/<code>/stats | Get click stats |
 
+https://roadmap.sh/projects/url-shortening-service
+ 
 ## Made by
 Ayush — Built from scratch as a beginner Python project! 🚀
